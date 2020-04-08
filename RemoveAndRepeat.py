@@ -1,4 +1,4 @@
-# adds code for cooling down and moving between up to 4 positions, to wipe the model of the print bed and make place for another
+# adds code for cooling down and moving between 7 user defined positions, to wipe the model of the print bed and make place for another
 # then copies the entire GCODE files content n nr of times to print aditional identical models in a row
 
 from ..Script import Script
@@ -18,6 +18,7 @@ class RemoveAndRepeat(Script):
                 "number_of_prints":
                 {
                     "label": "Number of repeats",
+                    "description":"How many models should be printed in a row?",
                     "type": "int",
                     "minimum_value": "1",
                     "default_value": 2
@@ -25,12 +26,14 @@ class RemoveAndRepeat(Script):
                 "cool_between_prints":
                 {
                     "label": "cool bed and tool between prints",
+                    "description":"let the tool and bed cool between prints, to make removal easier",
                     "type": "bool",
                     "default_value": true
                 }, 
                 "tool_temp":
                 {
                     "label": "hot end cool down temperature",
+                    "description":"the temperature the tool will cool to before removal of print",
                     "unit": "°C",
                     "type" : "float",
                     "default_value": 30.0,
@@ -40,6 +43,7 @@ class RemoveAndRepeat(Script):
                 "bed_temp":
                 {
                     "label": "bed cool down temperature",
+                    "description":"the temperature the bed will cool to before removal of print",
                     "unit": "°C",
                     "type" : "float",
                     "default_value": 30.0,
@@ -87,7 +91,7 @@ class RemoveAndRepeat(Script):
                     "description": "Y value for position 1.",
                     "unit": "mm",
                     "type": "float",
-                    "default_value": 0,
+                    "default_value": 0
                 },
                 "pos_1_Z":
                 {
@@ -143,7 +147,7 @@ class RemoveAndRepeat(Script):
                     "description": "Z value for position 3.",
                     "unit": "mm",
                     "type": "float",
-                    "default_value": 0.4
+                    "default_value": 1
                 },
                 "pos_4_X":
                 {
@@ -167,7 +171,7 @@ class RemoveAndRepeat(Script):
                     "description": "Z value for position 4.",
                     "unit": "mm",
                     "type": "float",
-                    "default_value": 0.4
+                    "default_value": 1
                 },
                 "pos_5_X":
                 {
@@ -191,7 +195,55 @@ class RemoveAndRepeat(Script):
                     "description": "Z value for position 5.",
                     "unit": "mm",
                     "type": "float",
-                    "default_value": 0.4
+                    "default_value": 1
+                },
+                "pos_6_X":
+                {
+                    "label": "Position 6, X coordinate",
+                    "description": "X value for position 6.",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 0
+                },
+                "pos_6_Y":
+                {
+                    "label": "Position 6, Y coordinate",
+                    "description": "Y value for position 6.",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 0
+                },
+                "pos_6_Z":
+                {
+                    "label": "Position 6, Z coordinate",
+                    "description": "Z value for position 6.",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 1
+                },
+                "pos_7_X":
+                {
+                    "label": "Position 7, X coordinate",
+                    "description": "X value for position 7.",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 0
+                },
+                "pos_7_Y":
+                {
+                    "label": "Position 7, Y coordinate",
+                    "description": "Y value for position 7.",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 0
+                },
+                "pos_7_Z":
+                {
+                    "label": "Position 7, Z coordinate",
+                    "description": "Z value for position 7.",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 1
                 }
             }
         }"""
@@ -218,6 +270,12 @@ class RemoveAndRepeat(Script):
         X5 = self.getSettingValueByKey("pos_5_X")
         Y5 = self.getSettingValueByKey("pos_5_Y")
         Z5 = self.getSettingValueByKey("pos_5_Z")
+        X6 = self.getSettingValueByKey("pos_6_X")
+        Y6 = self.getSettingValueByKey("pos_6_Y")
+        Z6 = self.getSettingValueByKey("pos_6_Z")
+        X7 = self.getSettingValueByKey("pos_7_X")
+        Y7 = self.getSettingValueByKey("pos_7_Y")
+        Z7 = self.getSettingValueByKey("pos_7_Z")
 
         end_code = ""
         end_code += self.putValue(M = 300, P = 200, S = 1500) + "\n"
@@ -227,33 +285,35 @@ class RemoveAndRepeat(Script):
             end_code += self.putValue(M = 106, P = 0) + ";turns on fans to increase cooling" + "\n"
             end_code += self.putValue(M = 106, P = 1) + "\n"
             end_code += self.putValue(M = 106, P = 2) + "\n"
+            end_code += "M117 cooling\n"
             end_code += self.putValue(M = 109, R = tool_temp) + ";wait for hotend to cool" +"\n"
             end_code += self.putValue(M = 190, R = bed_temp) + ";wait for bed to cool" +"\n"
             end_code += self.putValue(M = 300, P = 200, S = 1700) + "\n"
             end_code += self.putValue(M = 300, P = 200, S = 1700) + "\n"
 
         end_code += ";moves\n"
-        # end_code += self.putValue(M = 117, "removing print") + "\n"
+        end_code += "M117 removing print\n"
         end_code += self.putValue(G = 0, X = X1 , Y = Y1, Z = Z1) + "\n"
         end_code += self.putValue(G = 0, X = X2 , Y = Y2, Z = Z2) + "\n"
         end_code += self.putValue(G = 0, X = X3 , Y = Y3, Z = Z3) + "\n"
         end_code += self.putValue(G = 0, X = X4 , Y = Y4, Z = Z4) + "\n"
         end_code += self.putValue(G = 0, X = X5 , Y = Y5, Z = Z5) + "\n"
-
+        end_code += self.putValue(G = 0, X = X6 , Y = Y6, Z = Z6) + "\n"
+        end_code += self.putValue(G = 0, X = X7 , Y = Y7, Z = Z7) + "\n"
 
         end_code += self.putValue(M = 300, P = 200, S = 2200) + "\n"
         end_code += self.putValue(M = 300, P = 200, S = 2200) + "\n"
         end_code += self.putValue(M = 300, P = 200, S = 2200) + "\n"
 
-        end_code += ";end of print\n"
         data += end_code
 
-        number_of_printes = self.getSettingValueByKey("number_of_prints")
+        n = self.getSettingValueByKey("number_of_prints")
         
         repeat = data
 
         i = 1
-        while i < number_of_printes:
+        while i < n:
+            end_code += ";REPEAT PRINT\n"
             data += repeat
             i += 1
 

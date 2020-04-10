@@ -17,7 +17,7 @@ class RemoveAndRepeat(Script):
             {
                 "number_of_prints":
                 {
-                    "label": "Number of repeats",
+                    "label": "Number of prints",
                     "description":"How many models should be printed in a row?",
                     "type": "int",
                     "minimum_value": "1",
@@ -30,16 +30,6 @@ class RemoveAndRepeat(Script):
                     "type": "bool",
                     "default_value": true
                 }, 
-                "tool_temp":
-                {
-                    "label": "hot end cool down temperature",
-                    "description":"the temperature the tool will cool to before removal of print",
-                    "unit": "°C",
-                    "type" : "float",
-                    "default_value": 30.0,
-                    "minimum_value": "0",
-                    "enabled": "cool_between_prints"
-                },
                 "bed_temp":
                 {
                     "label": "bed cool down temperature",
@@ -50,14 +40,21 @@ class RemoveAndRepeat(Script):
                     "minimum_value": "0",
                     "enabled": "cool_between_prints"
                 },
-                "cool_Z":
+                "enable_timer":
                 {
-                    "label": "Z position for cooling",
-                    "description": "At what height should the print head wait while it cools?",
-                    "unit": "mm",
-                    "type": "float",
-                    "default_value": 50,
-                    "enabled": "cool_between_prints"
+                    "label": "Enable timer",
+                    "description": "The M190 command isn't working well for me. Set a number of minutes to wait between each print as well to be sure it cools down enough",
+                    "type": "bool",
+                    "default_value": true
+                },
+                "time":
+                {
+                    "label": "time between prints",
+                    "description": "How many minutes between prints?",
+                    "unit": "minutes",
+                    "type": "int",
+                    "default_value": 10,
+                    "enabled": "enable_timer"
                 },
                 "cool_X":
                 {
@@ -75,6 +72,15 @@ class RemoveAndRepeat(Script):
                     "unit": "mm",
                     "type": "float",
                     "default_value": 0,
+                    "enabled": "cool_between_prints"
+                },
+                "cool_Z":
+                {
+                    "label": "Z position for cooling",
+                    "description": "At what height should the print head wait while it cools?",
+                    "unit": "mm",
+                    "type": "float",
+                    "default_value": 50,
                     "enabled": "cool_between_prints"
                 },
                 "pos_1_X":
@@ -250,11 +256,12 @@ class RemoveAndRepeat(Script):
 
     def execute(self, data):
         cool = self.getSettingValueByKey("cool_between_prints")
-        tool_temp = self.getSettingValueByKey("tool_temp")
         bed_temp = self.getSettingValueByKey("bed_temp")
         cool_Z = self.getSettingValueByKey("cool_Z")
         cool_X = self.getSettingValueByKey("cool_X")
         cool_Y = self.getSettingValueByKey("cool_Y")
+        enable_timer = self.getSettingValueByKey("enable_timer")
+        time = self.getSettingValueByKey("time")
         X1 = self.getSettingValueByKey("pos_1_X")
         Y1 = self.getSettingValueByKey("pos_1_Y")
         Z1 = self.getSettingValueByKey("pos_1_Z")
@@ -281,19 +288,22 @@ class RemoveAndRepeat(Script):
         end_code += self.putValue(M = 300, P = 200, S = 1500) + "\n"
 
         if cool:
+            end_code += self.putValue(M = 104, S = 0) + "\n"
+            end_code += self.putValue(M = 140, S = 0) + "\n"
             end_code += self.putValue(G = 0, X = cool_X , Y = cool_Y, Z = cool_Z) + "\n"
             end_code += self.putValue(M = 106, P = 0) + ";turns on fans to increase cooling" + "\n"
             end_code += self.putValue(M = 106, P = 1) + "\n"
             end_code += self.putValue(M = 106, P = 2) + "\n"
             end_code += "M117 cooling\n"
-            end_code += self.putValue(M = 109, R = tool_temp) + ";wait for hotend to cool" +"\n"
+            if enable_timer:
+                end_code += self.putValue(G = 4, S = time*60) + "\n"
             end_code += self.putValue(M = 190, R = bed_temp) + ";wait for bed to cool" +"\n"
             end_code += self.putValue(M = 300, P = 200, S = 1700) + "\n"
             end_code += self.putValue(M = 300, P = 200, S = 1700) + "\n"
 
-        end_code += ";moves\n"
+        end_code += ";MOVE TO REMOVE PRINT\n"
         end_code += "M117 removing print\n"
-        end_code += self.putValue(G = 0, X = X1 , Y = Y1, Z = Z1) + "\n"
+        end_code += self.putValue(G = 0, X = X1 , Y = Y1, Z = Z1, F = 300) + "\n"
         end_code += self.putValue(G = 0, X = X2 , Y = Y2, Z = Z2) + "\n"
         end_code += self.putValue(G = 0, X = X3 , Y = Y3, Z = Z3) + "\n"
         end_code += self.putValue(G = 0, X = X4 , Y = Y4, Z = Z4) + "\n"
@@ -316,5 +326,9 @@ class RemoveAndRepeat(Script):
             end_code += ";REPEAT PRINT\n"
             data += repeat
             i += 1
+        
+        if i == n:
+            end_code += self.putValue(M = 104, S = 0) + "\n"
+            end_code += self.putValue(M = 140, S = 0) + "\n"
 
         return data
